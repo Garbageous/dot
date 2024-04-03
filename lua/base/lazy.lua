@@ -360,18 +360,31 @@ require('lazy').setup({
               callback = vim.lsp.buf.clear_references,
             })
           end
-        end,
-      })
 
-      vim.api.nvim_create_autocmd('LspAttach', {
-        group = vim.api.nvim_create_augroup('UserLspConfig', {}),
-        callback = function(event)
-          local client = vim.lsp.get_client_by_id(event.data.client_id)
           if client and client.supports_method 'textDocument/inlayHint' then
+            vim.api.nvim_echo({ { 'inlayHint enabled', 'None' } }, false, {})
             vim.lsp.inlay_hint.enable(event.buf, true)
+          end
+
+          if client and client.server_capabilities.signatureHelpProvider then
+            require('lsp-overloads').setup(client, {})
+
+            vim.keymap.set('n', '<A-s>', '<cmd>LspOverloadsSignature<CR>', { noremap = true, silent = true, buffer = event.buf })
+            vim.keymap.set('i', '<A-s>', '<cmd>LspOverloadsSignature<CR>', { noremap = true, silent = true, buffer = event.buf })
           end
         end,
       })
+
+      -- vim.api.nvim_create_autocmd('LspAttach', {
+      --   group = vim.api.nvim_create_augroup('UserLspConfig', {}),
+      --   callback = function(event)
+      --     local client = vim.lsp.get_client_by_id(event.data.client_id)
+      --     if client and client.supports_method 'textDocument/inlayHint' then
+      --       vim.api.nvim_echo({ { 'inlayHint enabled', 'None' } }, false, {})
+      --       vim.lsp.inlay_hint.enable(event.buf, true)
+      --     end
+      --   end,
+      -- })
 
       -- LSP servers and clients are able to communicate to each other what features they support.
       --  By default, Neovim doesn't support everything that is in the LSP specification.
@@ -392,11 +405,39 @@ require('lazy').setup({
       local servers = {
         -- clangd = {},
         omnisharp = {
-          cmd = { 'dotnet', 'C:/Users/Robert/AppData/Local/nvim-data/mason/packages/omnisharp/libexec/OmniSharp.dll' },
-          enable_roslyn_analysers = true,
-          enable_import_completion = true,
-          organize_imports_on_format = true,
-          enable_decompilation_support = true,
+          cmd = {
+            'C:\\Users\\Robert\\source\\repos\\omnisharp-roslyn\\artifacts\\publish\\OmniSharp.Stdio.Driver\\win7-x64\\net6.0\\OmniSharp.exe',
+            '-z',
+            '--hostPID',
+            tostring(vim.fn.getpid()),
+            'DotNet:enablePackageRestore=false',
+            '--encoding',
+            'utf-8',
+            '--languageserver',
+            'FormattingOptions:EnableEditorConfigSupport=true',
+            'FormattingOptions:OrganizeImports=true',
+            'RoslynExtensionsOptions:EnableAnalyzersSupport=true',
+            'RoslynExtensionsOptions:EnableImportCompletion=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:EnableForParameters=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForLiteralParameters=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForIndexerParameters=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForObjectCreationParameters=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForOtherParameters=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForLambdaParameterTypes=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:EnableForTypes=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForImplicitVariableTypes=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:ForImplicitObjectCreation=true',
+            'RoslynExtensionsOptions:InlayHintsOptions:suppressForParametersThatDifferOnlyBySuffix=false',
+            'RoslynExtensionsOptions:InlayHintsOptions:suppressForParametersThatMatchMethodIntent=false',
+            'RoslynExtensionsOptions:InlayHintsOptions:suppressForParametersThatMatchArgumentName=false',
+            'Sdk:IncludePrereleases=true',
+          },
+          root_dir = function(fname)
+            local lspconfig = require 'lspconfig'
+            local primary = lspconfig.util.root_pattern '*.sln'(fname)
+            local fallback = lspconfig.util.root_pattern '*.csproj'(fname)
+            return primary or fallback
+          end,
         },
         -- gopls = {},
         -- pyright = {},
@@ -551,7 +592,7 @@ require('lazy').setup({
           -- Accept ([y]es) the completion.
           --  This will auto-import if your LSP supports it.
           --  This will expand snippets if the LSP sent a snippet.
-          ['<C-y>'] = cmp.mapping.confirm { select = true },
+          ['<CR>'] = cmp.mapping.confirm { select = true },
 
           -- Manually trigger a completion from nvim-cmp.
           --  Generally you don't need this, because nvim-cmp will display
